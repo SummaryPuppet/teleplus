@@ -19,7 +19,9 @@ import pe.edu.utp.backend.dto.PagoRequestDTO;
 import pe.edu.utp.backend.dto.PagoResponseDTO;
 import pe.edu.utp.backend.dto.StripePaymentIntentDTO;
 import pe.edu.utp.backend.dto.StripeConfirmDTO;
+import pe.edu.utp.backend.entity.Compra;
 import pe.edu.utp.backend.entity.Pago;
+import pe.edu.utp.backend.repository.CompraRepository;
 import pe.edu.utp.backend.repository.PagoRepository;
 import pe.edu.utp.backend.service.PagoService;
 
@@ -28,6 +30,9 @@ public class PagoServiceimpl implements PagoService {
 
     @Autowired
     private PagoRepository repository;
+
+    @Autowired
+    private CompraRepository compraRepository;
 
     @Value("${stripe.secret.key}")
     private String stripeSecretKey;
@@ -194,6 +199,11 @@ public class PagoServiceimpl implements PagoService {
             pago.setFecha_pago(LocalDateTime.now());
             pago.setEstado("Aprobado");
             pago.setCodigo_transaccion(intent.getId());
+
+            if (request.compraId() != null) {
+                Optional<Compra> compra = compraRepository.findById(request.compraId());
+                compra.ifPresent(pago::setCompra);
+            }
 
             repository.save(pago);
 

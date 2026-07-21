@@ -38,7 +38,7 @@ public class Usuario {
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(length = 100, nullable = true)
-    @Size(min = 6, max = 100)
+    @Size(max = 100)
     private String contrasena;
 
     @Column(length = 10 )

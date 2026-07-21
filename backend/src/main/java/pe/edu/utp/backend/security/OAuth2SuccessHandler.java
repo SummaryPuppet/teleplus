@@ -63,7 +63,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             usuario.setNombre(nombre.isEmpty() ? "Usuario" : nombre);
             usuario.setApellido(apellido.isEmpty() ? "Google" : apellido);
             usuario.setCorreo(email);
-            usuario.setContrasena(null);
+            usuario.setContrasena("");
             usuario.setTelefono("");
             usuario.setEstado("activo");
             usuario.setFecha_registro(LocalDate.now());

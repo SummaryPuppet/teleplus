@@ -37,6 +37,6 @@ public class Pago {
     private String codigo_transaccion;
 
     @ManyToOne
-    @JoinColumn(name = "id_compra")
+    @JoinColumn(name = "id_compra", nullable = true)
     private Compra compra;
 }
