@@ -35,6 +35,11 @@ public class EventoServiceImpl implements EventoService {
     }
 
     @Override
+    public Evento buscarPorTitulo(String titulo) {
+        return eventoRepository.findByTitulo(titulo).orElse(null);
+    }
+
+    @Override
     public Evento guardar(Evento evento) {
 
         Lugar lugar = lugarRepository.findById(

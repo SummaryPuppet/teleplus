@@ -5,8 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import pe.edu.utp.backend.entity.Entrada;
+import pe.edu.utp.backend.entity.EventoZonaPrecio;
 import pe.edu.utp.backend.entity.Usuario;
 import pe.edu.utp.backend.repository.EntradaRepository;
+import pe.edu.utp.backend.repository.EventoZonaPrecioRepository;
 import pe.edu.utp.backend.repository.UsuarioRepository;
 import java.time.LocalDate;
 import java.util.List;
@@ -19,6 +21,8 @@ public class EntradaController {
         private EntradaRepository repository;
         @Autowired
         private UsuarioRepository usuarioRepository;
+        @Autowired
+        private EventoZonaPrecioRepository eventoZonaPrecioRepository;
 
         private Usuario obtenerUsuario(Authentication authentication) {
                 String correo = authentication.getName();
@@ -45,6 +49,12 @@ public class EntradaController {
                 entrada.setFecha_generacion(LocalDate.now());
                 Usuario usuario = obtenerUsuario(authentication);
                 entrada.setUsuario(usuario);
+
+                Long eventoZonaPrecioId = entrada.getEventoZonaPrecio().getId();
+                EventoZonaPrecio eventoZonaPrecio = eventoZonaPrecioRepository.findById(eventoZonaPrecioId)
+                                .orElseThrow(() -> new RuntimeException("EventoZonaPrecio no encontrado"));
+                entrada.setEventoZonaPrecio(eventoZonaPrecio);
+
                 return repository.save(entrada);
         }
 

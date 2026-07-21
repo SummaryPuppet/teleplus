@@ -10,6 +10,16 @@ export const procesarPago = async (pagoData) => {
   return data;
 };
 
+export const createPaymentIntent = async (data) => {
+  const { data: response } = await apiClient.post("/api/pagos/stripe/create-payment-intent", data);
+  return response;
+};
+
+export const confirmarPagoStripe = async (data) => {
+  const { data: response } = await apiClient.post("/api/pagos/stripe/confirm-pago", data);
+  return response;
+};
+
 export const obtenerPago = async (id) => {
   const { data } = await apiClient.get(`/api/pagos/${id}`);
   return data;

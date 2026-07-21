@@ -12,6 +12,13 @@ export async function obtenerEventoPorId(id) {
   return data;
 }
 
+export async function buscarEventoPorTitulo(titulo) {
+  const { data } = await apiClient.get(`${API}/eventos/buscar`, {
+    params: { titulo },
+  });
+  return data;
+}
+
 export async function crearEvento(evento) {
   const { data } = await apiClient.post(`${API}/eventos`, evento);
   return data;
@@ -91,4 +98,11 @@ export async function actualizarEventoZonaPrecio(id, ezp) {
 
 export async function eliminarEventoZonaPrecio(id) {
   await apiClient.delete(`${API}/evento-zona-precio/${id}`);
+}
+
+export async function buscarEZPPorEventoZonaTipo(tituloEvento, nombreZona, tipoPrecio) {
+  const { data } = await apiClient.get(`${API}/evento-zona-precio/buscar`, {
+    params: { tituloEvento, nombreZona, tipoPrecio },
+  });
+  return data;
 }

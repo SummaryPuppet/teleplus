@@ -188,3 +188,16 @@
   color: #6c757d;
   margin-top: 8px;
 }
+
+.cardElement {
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cardElement:focus-within {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.12);
+}

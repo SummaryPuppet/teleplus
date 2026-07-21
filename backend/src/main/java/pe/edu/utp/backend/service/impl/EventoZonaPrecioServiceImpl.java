@@ -47,6 +47,13 @@ public class EventoZonaPrecioServiceImpl
     }
 
     @Override
+    public EventoZonaPrecio buscarPorEventoZonaTipo(
+            String tituloEvento, String nombreZona, String tipoPrecio) {
+
+        return repository.buscarPorEventoZonaTipo(tituloEvento, nombreZona, tipoPrecio).orElse(null);
+    }
+
+    @Override
     public EventoZonaPrecio guardar(
             EventoZonaPrecio eventoZonaPrecio) {
 

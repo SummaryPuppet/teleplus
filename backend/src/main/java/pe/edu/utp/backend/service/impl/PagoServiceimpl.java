@@ -7,9 +7,18 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import com.stripe.Stripe;
+import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
+import com.stripe.param.PaymentIntentCreateParams;
+
 import pe.edu.utp.backend.dto.PagoRequestDTO;
 import pe.edu.utp.backend.dto.PagoResponseDTO;
+import pe.edu.utp.backend.dto.StripePaymentIntentDTO;
+import pe.edu.utp.backend.dto.StripeConfirmDTO;
 import pe.edu.utp.backend.entity.Pago;
 import pe.edu.utp.backend.repository.PagoRepository;
 import pe.edu.utp.backend.service.PagoService;
@@ -19,6 +28,9 @@ public class PagoServiceimpl implements PagoService {
 
     @Autowired
     private PagoRepository repository;
+
+    @Value("${stripe.secret.key}")
+    private String stripeSecretKey;
 
     @Override
     public List<Pago> getall() {
@@ -129,5 +141,66 @@ public class PagoServiceimpl implements PagoService {
             alternar = !alternar;
         }
         return suma % 10 == 0;
+    }
+
+    @Override
+    public PagoResponseDTO crearPaymentIntent(StripePaymentIntentDTO request) {
+        if (request.monto() == null || request.monto() <= 0) {
+            return new PagoResponseDTO(false, "El monto debe ser mayor a 0", null);
+        }
+
+        try {
+            Stripe.apiKey = stripeSecretKey;
+
+            long amountInCents = (long) (request.monto() * 100);
+
+            PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                    .setAmount(amountInCents)
+                    .setCurrency(request.moneda() != null ? request.moneda() : "pen")
+                    .setAutomaticPaymentMethods(
+                            PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
+                                    .setEnabled(true)
+                                    .build())
+                    .putMetadata("email", request.email() != null ? request.email() : "")
+                    .build();
+
+            PaymentIntent intent = PaymentIntent.create(params);
+
+            return new PagoResponseDTO(true, "PaymentIntent creado", intent.getClientSecret());
+
+        } catch (StripeException e) {
+            return new PagoResponseDTO(false, "Error de Stripe: " + e.getMessage(), null);
+        }
+    }
+
+    @Override
+    public PagoResponseDTO confirmarPago(StripeConfirmDTO request) {
+        if (request.paymentIntentId() == null || request.paymentIntentId().isBlank()) {
+            return new PagoResponseDTO(false, "paymentIntentId es requerido", null);
+        }
+
+        try {
+            Stripe.apiKey = stripeSecretKey;
+
+            PaymentIntent intent = PaymentIntent.retrieve(request.paymentIntentId());
+
+            if (!"succeeded".equals(intent.getStatus())) {
+                return new PagoResponseDTO(false, "El pago no fue aprobado. Estado: " + intent.getStatus(), null);
+            }
+
+            Pago pago = new Pago();
+            pago.setMetodo_pago(request.metodoPago() != null ? request.metodoPago() : "Tarjeta de credito");
+            pago.setMonto(request.monto());
+            pago.setFecha_pago(LocalDateTime.now());
+            pago.setEstado("Aprobado");
+            pago.setCodigo_transaccion(intent.getId());
+
+            repository.save(pago);
+
+            return new PagoResponseDTO(true, "Pago aprobado y registrado", intent.getId());
+
+        } catch (StripeException e) {
+            return new PagoResponseDTO(false, "Error de Stripe: " + e.getMessage(), null);
+        }
     }
 }

@@ -38,6 +38,5 @@ public class Pago {
 
     @ManyToOne
     @JoinColumn(name = "id_compra")
-    @NotNull
     private Compra compra;
 }

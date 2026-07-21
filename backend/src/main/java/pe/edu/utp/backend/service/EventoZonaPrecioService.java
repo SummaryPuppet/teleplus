@@ -12,6 +12,8 @@ public interface EventoZonaPrecioService {
 
     EventoZonaPrecio buscarPorId(Long id);
 
+    EventoZonaPrecio buscarPorEventoZonaTipo(String tituloEvento, String nombreZona, String tipoPrecio);
+
     EventoZonaPrecio guardar(EventoZonaPrecio eventoZonaPrecio);
 
     EventoZonaPrecio actualizar(Long id, EventoZonaPrecio eventoZonaPrecio);

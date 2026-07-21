@@ -3,6 +3,7 @@ import LayoutPrincipal from "../layouts/LayoutPrincipal";
 
 import { guardarEntrada } from "../services/entradaService";
 import { crearCompra } from "../services/compraService";
+import { buscarEZPPorEventoZonaTipo } from "../services/eventoService";
 
 import { useState } from "react";
 
@@ -131,13 +132,27 @@ function Compras() {
 
       const codigoQR = codigoTransaccion || `QR_${Math.random().toString(36).substring(2, 14).toUpperCase()}`;
 
+      let idEventoZonaPrecio = datosCompra.idEventoZonaPrecio;
+      if (!idEventoZonaPrecio && datosCompra.evento && datosCompra.zona && datosCompra.tipo) {
+        try {
+          const ezp = await buscarEZPPorEventoZonaTipo(
+            datosCompra.evento,
+            datosCompra.zona,
+            datosCompra.tipo
+          );
+          if (ezp) idEventoZonaPrecio = ezp.id;
+        } catch (e) {
+          console.error("Error buscando eventoZonaPrecio:", e);
+        }
+      }
+
       await guardarEntrada({
         codigo_qr: codigoQR,
         estado: "Activo",
         precio_final: totalFinal,
         reservado_hasta: null,
         eventoZonaPrecio: {
-        id: datosCompra.idEventoZonaPrecio
+        id: idEventoZonaPrecio
         }
       });
       setMostrarExito(true);
