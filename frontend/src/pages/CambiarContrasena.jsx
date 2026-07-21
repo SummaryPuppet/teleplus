@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LayoutPrincipal from "../layouts/LayoutPrincipal";
 import apiClient from "../services/apiClient";
+import PasswordStrengthBar from "../components/PasswordStrengthBar";
 
 const getStoredUser = () => {
   const storedUser = localStorage.getItem("user");
@@ -160,6 +161,7 @@ function CambiarContrasena() {
                         placeholder="Minimo 8 caracteres"
                         required
                       />
+                      <PasswordStrengthBar password={formData.nuevaContrasena} />
                       {errores.nuevaContrasena && <div className="invalid-feedback">{errores.nuevaContrasena}</div>}
                     </div>
 

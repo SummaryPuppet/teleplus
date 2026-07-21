@@ -22,6 +22,7 @@ import Evento6 from "./pages/eventos/Evento6";
 import Informacion from "./pages/Informacion";
 import Inicio from "./pages/Inicio";
 import Login from "./pages/Login";
+import AuthCallback from "./pages/AuthCallback";
 import PaginaNoEncontrada from "./pages/PaginaNoEncontrada";
 import Perfil from "./pages/Perfil";
 import Registro from "./pages/Registro";
@@ -98,6 +99,7 @@ function RouteTransition() {
         <Route path="/nosotros" element={<Informacion />} />
         <Route path="/compras" element={<ProtectedRoute><Compras /></ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/ver-boletos" element={<ProtectedRoute><VerBoletos /></ProtectedRoute>} />
         <Route path="/cambiar-contrasena" element={<ProtectedRoute><CambiarContrasena /></ProtectedRoute>} />
         <Route path="/evento-1" element={<Evento1 />} />

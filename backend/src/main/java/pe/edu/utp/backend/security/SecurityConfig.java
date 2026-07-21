@@ -23,9 +23,12 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          OAuth2SuccessHandler oAuth2SuccessHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
     }
 
     @Bean
@@ -53,6 +56,9 @@ public class SecurityConfig {
                     "/api/usuarios/login-admin",
                     "/api/usuarios/registro"
                 ).permitAll()
+
+                // OAuth2 callback
+                .requestMatchers("/auth/callback").permitAll()
 
                 // Catálogo público (solo GET)
                 .requestMatchers(HttpMethod.GET,
@@ -93,6 +99,9 @@ public class SecurityConfig {
 
                 // Cualquier otra ruta requiere estar autenticado
                 .anyRequest().authenticated()
+            )
+            .oauth2Login(oauth2 -> oauth2
+                .successHandler(oAuth2SuccessHandler)
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

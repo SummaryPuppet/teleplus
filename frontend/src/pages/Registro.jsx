@@ -5,6 +5,7 @@ import styles from "../css/registro.module.css";
 import LayoutPrincipal from "../layouts/LayoutPrincipal";
 import { registrarUsuario } from "../services/UsuarioService";
 import { Link } from "react-router-dom";
+import PasswordStrengthBar from "../components/PasswordStrengthBar";
 
 function Registro() {
   const navigate = useNavigate();
@@ -244,6 +245,7 @@ function Registro() {
                       {showPassword ? <FaEye /> : <FaEyeSlash />}
                     </span>
                   </div>
+                  <PasswordStrengthBar password={formData.contrasena} />
                 </div>
                 <div className="col-md-6 mb-3">
                   <label className="fw-semibold text-muted small mb-1">

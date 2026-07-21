@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaCheckCircle, FaEye, FaEyeSlash, FaSignInAlt } from "react-icons/fa";
+import { FaCheckCircle, FaEye, FaEyeSlash, FaSignInAlt, FaGoogle } from "react-icons/fa";
 import styles from "../css/login.module.css";
 import LayoutPrincipal from "../layouts/LayoutPrincipal";
 import { loginUsuario } from "../services/UsuarioService";
@@ -32,6 +32,8 @@ function Login() {
       errorInvalidEmail: "Correo no válido",
       errorAuth: "Correo o contraseña incorrectos",
       footer: "Vive la música. Siente la experiencia 🎶",
+      googleLogin: "Iniciar sesión con Google",
+      orDivider: "— o —",
     },
 
     en: {
@@ -53,6 +55,8 @@ function Login() {
       errorInvalidEmail: "Invalid email",
       errorAuth: "Invalid email or password",
       footer: "Live the music. Feel the experience 🎶",
+      googleLogin: "Sign in with Google",
+      orDivider: "— or —",
     },
   };
 
@@ -239,6 +243,19 @@ function Login() {
               >
                 <FaSignInAlt /> {t.login}
               </button>
+
+              {/* DIVIDER */}
+              <div className="text-center my-3">
+                <span className="text-muted small">{t.orDivider}</span>
+              </div>
+
+              {/* GOOGLE LOGIN */}
+              <a
+                href="http://localhost:8080/oauth2/authorization/google"
+                className="btn btn-outline-dark btn-lg w-100 mb-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2"
+              >
+                <FaGoogle style={{ color: "#DB4437" }} /> {t.googleLogin}
+              </a>
 
               {/* LINKS */}
               <div className="text-center mt-3 pt-3 border-top">
