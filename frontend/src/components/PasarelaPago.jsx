@@ -1,110 +1,51 @@
 import { useState } from "react";
+import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { QRCodeSVG } from "qrcode.react";
 import styles from "../css/pasarelaPago.module.css";
-import { procesarPago } from "../services/pagoService";
+import { createPaymentIntent, confirmarPagoStripe, procesarPago } from "../services/pagoService";
+
+const CARD_ELEMENT_OPTIONS = {
+  style: {
+    base: {
+      fontSize: "16px",
+      color: "#212529",
+      fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+      fontSmoothing: "antialiased",
+      "::placeholder": { color: "#adb5bd" },
+    },
+    invalid: {
+      color: "#dc3545",
+      iconColor: "#dc3545",
+    },
+  },
+};
 
 function PasarelaPago({ metodoPago, monto, onExito, onCancelar }) {
+  const stripe = useStripe();
+  const elements = useElements();
+
   const [estado, setEstado] = useState("form");
-  const [numeroTarjeta, setNumeroTarjeta] = useState("");
-  const [vencimiento, setVencimiento] = useState("");
-  const [cvv, setCvv] = useState("");
+  const [procesando, setProcesando] = useState(false);
   const [celular, setCelular] = useState("");
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState("");
 
-  const formatNumeroTarjeta = (value) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || "";
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    return parts.length ? parts.join(" ") : v;
-  };
-
-  const formatVencimiento = (value) => {
-    const v = value.replace(/[^0-9]/gi, "");
-    if (v.length >= 2) {
-      return v.substring(0, 2) + "/" + v.substring(2, 4);
-    }
-    return v;
-  };
-
-  const validarCampo = (campo, valor) => {
-    const nuevosErrores = { ...errores };
-    delete nuevosErrores[campo];
-
-    if (campo === "numeroTarjeta") {
-      const limpio = valor.replace(/\s/g, "");
-      if (limpio.length > 0 && limpio.length < 13) {
-        nuevosErrores[campo] = "Minimo 13 digitos";
-      } else if (limpio.length >= 13 && !validarLuhn(limpio)) {
-        nuevosErrores[campo] = "Numero de tarjeta invalido";
-      }
-    }
-
-    if (campo === "vencimiento") {
-      if (valor.length === 5) {
-        const [mes, anio] = valor.split("/");
-        const mesNum = parseInt(mes);
-        const anioNum = parseInt("20" + anio);
-        if (mesNum < 1 || mesNum > 12) {
-          nuevosErrores[campo] = "Mes invalido";
-        } else {
-          const ahora = new Date();
-          const fechaVenc = new Date(anioNum, mesNum);
-          if (fechaVenc <= ahora) {
-            nuevosErrores[campo] = "Tarjeta vencida";
-          }
-        }
-      }
-    }
-
-    if (campo === "cvv") {
-      if (valor.length > 0 && (valor.length < 3 || valor.length > 4)) {
-        nuevosErrores[campo] = "CVV invalido";
-      }
-    }
-
-    if (campo === "celular") {
-      const limpio = valor.replace(/\s/g, "");
-      if (limpio.length > 0 && !/^9\d{8}$/.test(limpio)) {
-        nuevosErrores[campo] = "Debe ser 9 digitos y empezar con 9";
-      }
-    }
-
-    setErrores(nuevosErrores);
-    return Object.keys(nuevosErrores).length === 0;
-  };
-
-  const validarLuhn = (numero) => {
-    let suma = 0;
-    let alternar = false;
-    for (let i = numero.length - 1; i >= 0; i--) {
-      let digito = parseInt(numero[i]);
-      if (alternar) {
-        digito *= 2;
-        if (digito > 9) digito -= 9;
-      }
-      suma += digito;
-      alternar = !alternar;
-    }
-    return suma % 10 === 0;
-  };
-
   const esTarjeta = metodoPago === "Tarjeta de credito" || metodoPago === "Tarjeta de debito";
   const esYapePlin = metodoPago === "Yape / Plin";
 
+  const validarCelular = (valor) => {
+    const limpio = valor.replace(/\s/g, "");
+    if (limpio.length > 0 && !/^9\d{8}$/.test(limpio)) {
+      setErrores({ celular: "Debe ser 9 digitos y empezar con 9" });
+      return false;
+    }
+    setErrores({});
+    return true;
+  };
+
   const camposValidos = () => {
     if (esTarjeta) {
-      const numLimpio = numeroTarjeta.replace(/\s/g, "");
-      return (
-        numLimpio.length >= 13 &&
-        vencimiento.length === 5 &&
-        cvv.length >= 3 &&
-        Object.keys(errores).length === 0
-      );
+      return stripe && elements;
     }
     if (esYapePlin) {
       const celLimpio = celular.replace(/\s/g, "");
@@ -115,47 +56,100 @@ function PasarelaPago({ metodoPago, monto, onExito, onCancelar }) {
 
   const handlePagar = async () => {
     setErrorGeneral("");
-    setEstado("procesando");
+
+    if (!stripe || !elements) {
+      setErrorGeneral("El sistema de pago aún se está cargando. Espere un momento e intente de nuevo.");
+      return;
+    }
+
+    setProcesando(true);
 
     try {
-      const payload = {
-        metodoPago,
-        monto,
-        numeroTarjeta: esTarjeta ? numeroTarjeta.replace(/\s/g, "") : null,
-        vencimiento: esTarjeta ? vencimiento : null,
-        cvv: esTarjeta ? cvv : null,
-        celular: esYapePlin ? celular.replace(/\s/g, "") : null,
-      };
+      if (esTarjeta) {
+        const cardElement = elements.getElement(CardElement);
 
-      const response = await procesarPago(payload);
+        if (!cardElement) {
+          setErrorGeneral("No se pudo obtener los datos de la tarjeta. Intente de nuevo.");
+          setProcesando(false);
+          return;
+        }
 
-      if (response.aprobado) {
-        setEstado("aprobado");
-        setTimeout(() => onExito(response.codigoTransaccion), 1500);
-      } else {
-        setEstado("rechazado");
-        setErrorGeneral(response.mensaje || "Pago rechazado");
+        const intentResponse = await createPaymentIntent({
+          monto,
+          moneda: "pen",
+          email: "",
+        });
+
+        if (!intentResponse.aprobado) {
+          setErrorGeneral(intentResponse.mensaje || "Error al crear el pago");
+          setProcesando(false);
+          return;
+        }
+
+        const { error: confirmError, paymentIntent: confirmedIntent } =
+          await stripe.confirmCardPayment(intentResponse.codigoTransaccion, {
+            payment_method: {
+              card: cardElement,
+            },
+          });
+
+        if (confirmError) {
+          setErrorGeneral(confirmError.message || "Pago rechazado por el banco");
+          setProcesando(false);
+          return;
+        }
+
+        if (confirmedIntent.status === "succeeded") {
+          const confirmResponse = await confirmarPagoStripe({
+            paymentIntentId: confirmedIntent.id,
+            monto,
+            metodoPago,
+          });
+
+          setProcesando(false);
+
+          if (confirmResponse.aprobado) {
+            setEstado("aprobado");
+            setTimeout(() => onExito(confirmedIntent.id), 1500);
+          } else {
+            setErrorGeneral(confirmResponse.mensaje || "Error al registrar el pago");
+          }
+        } else {
+          setErrorGeneral("El pago no pudo ser completado");
+          setProcesando(false);
+        }
+      }
+
+      if (esYapePlin) {
+        const payload = {
+          metodoPago,
+          monto,
+          numeroTarjeta: null,
+          vencimiento: null,
+          cvv: null,
+          celular: celular.replace(/\s/g, ""),
+        };
+
+        const response = await procesarPago(payload);
+
+        setProcesando(false);
+
+        if (response.aprobado) {
+          setEstado("aprobado");
+          setTimeout(() => onExito(response.codigoTransaccion), 1500);
+        } else {
+          setErrorGeneral(response.mensaje || "Pago rechazado");
+        }
       }
     } catch (error) {
-      const mensaje = error.response?.data?.mensaje || "Error al procesar el pago. Intente con otro metodo.";
-      setEstado("rechazado");
+      const mensaje =
+        error.response?.data?.mensaje ||
+        error.message ||
+        "Error al procesar el pago. Intente con otro metodo.";
       setErrorGeneral(mensaje);
+      setProcesando(false);
     }
   };
-
-  if (estado === "procesando") {
-    return (
-      <div className={styles.overlay}>
-        <div className={styles.modal}>
-          <div className={styles.contenido} style={{ textAlign: "center", padding: "48px 24px" }}>
-            <div className={styles.spinner}></div>
-            <h4 style={{ color: "#212529" }}>Procesando pago...</h4>
-            <p style={{ color: "#6c757d" }}>Por favor espere</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (estado === "aprobado") {
     return (
@@ -171,32 +165,14 @@ function PasarelaPago({ metodoPago, monto, onExito, onCancelar }) {
     );
   }
 
-  if (estado === "rechazado") {
-    return (
-      <div className={styles.overlay}>
-        <div className={styles.modal}>
-          <div className={styles.contenido} style={{ textAlign: "center", padding: "48px 24px" }}>
-            <div className={styles.error}>&#10007;</div>
-            <h4 style={{ color: "#dc3545" }}>Pago rechazado</h4>
-            <p style={{ color: "#dc3545", fontWeight: "bold" }}>{errorGeneral}</p>
-            <button className="btn btn-danger mt-3" onClick={() => { setEstado("form"); setErrores({}); setErrorGeneral(""); }}>
-              Intentar de nuevo
-            </button>
-            <button className="btn btn-secondary mt-3 ms-2" onClick={onCancelar}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.overlay}>
       <div className={styles.modal}>
         <div className={styles.header}>
           <h5>Pasarela de Pago</h5>
-          <button className={styles.cerrar} onClick={onCancelar}>&times;</button>
+          <button className={styles.cerrar} onClick={onCancelar} disabled={procesando}>
+            &times;
+          </button>
         </div>
 
         <div className={styles.contenido}>
@@ -212,54 +188,18 @@ function PasarelaPago({ metodoPago, monto, onExito, onCancelar }) {
           {esTarjeta && (
             <div className={styles.formulario}>
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ color: "#495057", fontSize: "0.85rem" }}>Numero de tarjeta</label>
-                <input
-                  type="text"
-                  className={`form-control ${styles.inputField} ${errores.numeroTarjeta ? "is-invalid" : ""}`}
-                  placeholder="0000 0000 0000 0000"
-                  maxLength="19"
-                  value={numeroTarjeta}
-                  onChange={(e) => {
-                    const val = formatNumeroTarjeta(e.target.value);
-                    setNumeroTarjeta(val);
-                    validarCampo("numeroTarjeta", val);
-                  }}
-                />
-                {errores.numeroTarjeta && <div className="invalid-feedback" style={{ color: "#dc3545" }}>{errores.numeroTarjeta}</div>}
-              </div>
-              <div className="row">
-                <div className="col-6 mb-3">
-                  <label className="form-label fw-semibold" style={{ color: "#495057", fontSize: "0.85rem" }}>Vencimiento</label>
-                  <input
-                    type="text"
-                    className={`form-control ${styles.inputField} ${errores.vencimiento ? "is-invalid" : ""}`}
-                    placeholder="MM/AA"
-                    maxLength="5"
-                    value={vencimiento}
-                    onChange={(e) => {
-                      const val = formatVencimiento(e.target.value);
-                      setVencimiento(val);
-                      validarCampo("vencimiento", val);
-                    }}
-                  />
-                  {errores.vencimiento && <div className="invalid-feedback" style={{ color: "#dc3545" }}>{errores.vencimiento}</div>}
+                <label
+                  className="form-label fw-semibold"
+                  style={{ color: "#495057", fontSize: "0.85rem" }}
+                >
+                  Datos de la tarjeta
+                </label>
+                <div className={styles.cardElement}>
+                  <CardElement options={CARD_ELEMENT_OPTIONS} />
                 </div>
-                <div className="col-6 mb-3">
-                  <label className="form-label fw-semibold" style={{ color: "#495057", fontSize: "0.85rem" }}>CVV</label>
-                  <input
-                    type="password"
-                    className={`form-control ${styles.inputField} ${errores.cvv ? "is-invalid" : ""}`}
-                    placeholder="123"
-                    maxLength="4"
-                    value={cvv}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setCvv(val);
-                      validarCampo("cvv", val);
-                    }}
-                  />
-                  {errores.cvv && <div className="invalid-feedback" style={{ color: "#dc3545" }}>{errores.cvv}</div>}
-                </div>
+                <small style={{ color: "#6c757d", fontSize: "0.78rem" }}>
+                  Tarjetas de prueba: 4242 4242 4242 4242, cualquier fecha futura, cualquier CVV
+                </small>
               </div>
             </div>
           )}
@@ -275,24 +215,38 @@ function PasarelaPago({ metodoPago, monto, onExito, onCancelar }) {
                     fgColor="#1a1a2e"
                     includeMargin={false}
                   />
-                  <small className="mt-2" style={{ color: "#6c757d" }}>Escanear codigo</small>
+                  <small className="mt-2" style={{ color: "#6c757d" }}>
+                    Escanear codigo
+                  </small>
                 </div>
               </div>
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ color: "#495057", fontSize: "0.85rem" }}>Numero de celular</label>
+                <label
+                  className="form-label fw-semibold"
+                  style={{ color: "#495057", fontSize: "0.85rem" }}
+                >
+                  Numero de celular
+                </label>
                 <input
                   type="text"
-                  className={`form-control ${styles.inputField} ${errores.celular ? "is-invalid" : ""}`}
+                  className={`form-control ${styles.inputField} ${
+                    errores.celular ? "is-invalid" : ""
+                  }`}
                   placeholder="999 999 999"
                   maxLength="9"
                   value={celular}
+                  disabled={procesando}
                   onChange={(e) => {
                     const val = e.target.value.replace(/[^0-9]/g, "");
                     setCelular(val);
-                    validarCampo("celular", val);
+                    validarCelular(val);
                   }}
                 />
-                {errores.celular && <div className="invalid-feedback" style={{ color: "#dc3545" }}>{errores.celular}</div>}
+                {errores.celular && (
+                  <div className="invalid-feedback" style={{ color: "#dc3545" }}>
+                    {errores.celular}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -300,12 +254,31 @@ function PasarelaPago({ metodoPago, monto, onExito, onCancelar }) {
           <button
             className="btn btn-danger w-100 fw-bold mt-3"
             onClick={handlePagar}
-            disabled={!camposValidos()}
+            disabled={procesando || !stripe || !elements || !camposValidos()}
           >
-            Pagar S/. {monto.toFixed(2)}
+            {procesando ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2"></span>
+                Procesando...
+              </>
+            ) : (
+              `Pagar S/. ${monto.toFixed(2)}`
+            )}
           </button>
         </div>
       </div>
+
+      {procesando && (
+        <div className={styles.overlay} style={{ zIndex: 2001 }}>
+          <div className={styles.modal}>
+            <div className={styles.contenido} style={{ textAlign: "center", padding: "48px 24px" }}>
+              <div className={styles.spinner}></div>
+              <h4 style={{ color: "#212529" }}>Procesando pago...</h4>
+              <p style={{ color: "#6c757d" }}>Por favor espere</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

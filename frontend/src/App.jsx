@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import "./App.css";
 import SessionExpiredModal from "./components/SessionExpiredModal";
 import useIdleTimer from "./hooks/useIdleTimer";
@@ -32,6 +34,8 @@ import AvisoLegal from "./pages/AvisoLegal";
 import EventoDetalle from "./pages/eventos/EventoDetalle";
 import PromocionesDashboard from "./pages/dashboard/PromocionesDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+const stripePromise = loadStripe("pk_test_51TvN2zIQRmT1jibwgWhII0NMRErrIMNsDaBCDJBfXpT14vvJaVMQeZ1olnPCUc9Zu1BZKOvUxYLMsevy6RMewCJn00giK3G3pV");
 
 function SessionManager() {
   const navigate = useNavigate();
@@ -137,10 +141,12 @@ function RouteTransition() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <SessionManager />
-      <RouteTransition />
-    </BrowserRouter>
+    <Elements stripe={stripePromise}>
+      <BrowserRouter>
+        <SessionManager />
+        <RouteTransition />
+      </BrowserRouter>
+    </Elements>
   );
 }
 

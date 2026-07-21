@@ -26,6 +26,15 @@ public class EventoController {
 		return eventoService.buscarPorId(id);
 	}
 
+	@GetMapping("/buscar")
+	public ResponseEntity<Evento> buscarPorTitulo(@RequestParam String titulo) {
+		Evento evento = eventoService.buscarPorTitulo(titulo);
+		if (evento == null) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.ok(evento);
+	}
+
 	@PostMapping
 	public Evento guardar(@Valid @RequestBody Evento evento) {
 		return eventoService.guardar(evento);

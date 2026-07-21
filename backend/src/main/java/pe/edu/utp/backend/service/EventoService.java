@@ -10,6 +10,8 @@ public interface EventoService {
 
     Evento buscarPorId(Long id);
 
+    Evento buscarPorTitulo(String titulo);
+
     Evento guardar(Evento evento);
 
     Evento actualizar(Long id, Evento evento);
